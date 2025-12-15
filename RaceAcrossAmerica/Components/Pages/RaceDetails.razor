@@ -24,25 +24,92 @@ else
             <div class="col-md-8">
                 <div class="card p-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5>Checkpoints</h5>
+                        <h5>Checkpoint Manager</h5>
                     </div>
 
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control" placeholder="Name (e.g. Kansas City)"
-                               @bind-value="_newCheckpoint.Name" />
-                        <input type="number" class="form-control" placeholder="Miles" style="max-width: 100px;"
-                               @bind-value="_newCheckpoint.DistanceFromStart" />
-                        <button class="btn btn-primary" @onclick="HandleAddCheckpoint">Add</button>
+                    @* Div for Map and Checkpoint Pins, with a Ghost pin for viewing new Checkpoint *@
+                    <div class="mb-4 border rounded" style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;">
+
+                        <img src="/images/us_map.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" />
+
+                        @foreach (var cp in _race.Checkpoints)
+                        {
+                            <div title="@cp.Name"
+                                 style="position: absolute;
+                                                left: @(cp.MapPositionX)%;
+                                                top: @(cp.MapPositionY)%;
+                                                width: 10px; height: 10px;
+                                                background-color: blue;
+                                                border-radius: 50%;
+                                                transform: translate(-50%, -50%);
+                                                z-index: 1;">
+                            </div>
+                        }
+
+                        <div title="New Checkpoint Preview"
+                             style="position: absolute;
+                                        left: @(_newCheckpoint.MapPositionX)%;
+                                        top: @(_newCheckpoint.MapPositionY)%;
+                                        width: 16px; height: 16px;
+                                        background-color: #00ff00;
+                                        border: 2px solid white;
+                                        border-radius: 50%;
+                                        transform: translate(-50%, -50%);
+                                        z-index: 10;
+                                        box-shadow: 0 0 10px #00ff00;">
+                        </div>
+
+                        <div style="position: absolute; bottom: 5px; right: 5px; background: rgba(255,255,255,0.8); padding: 2px 5px; font-size: 0.8rem;">
+                            X: @_newCheckpoint.MapPositionX% | Y: @_newCheckpoint.MapPositionY%
+                        </div>
+                    </div>
+
+                    @* Div for Adding checkpoint and adjusting X and Y position before saving *@
+                    <div class="card bg-light p-3 mb-3">
+                        <h6>Add New Checkpoint</h6>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="small text-muted">Name</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="City Name"
+                                       @bind-value="_newCheckpoint.Name" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small text-muted">Miles</label>
+                                <input type="number" class="form-control form-control-sm" placeholder="0"
+                                       @bind-value="_newCheckpoint.DistanceFromStart" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small text-muted">Map X %</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       @bind-value="_newCheckpoint.MapPositionX"
+                                       @bind-value:event="oninput"
+                                       min="0" max="100" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small text-muted">Map Y %</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       @bind-value="_newCheckpoint.MapPositionY"
+                                       @bind-value:event="oninput"
+                                       min="0" max="100" />
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-sm btn-success w-100" @onclick="HandleAddCheckpoint">Save</button>
+                            </div>
+                        </div>
+                        <div class="form-text small">
+                            Tip: Adjust X and Y to move the Green Dot on the map above.
+                        </div>
                     </div>
 
                     @if (_race.Checkpoints.Any())
                     {
                         <div class="table-responsive">
                             <table class="table table-sm table-hover">
-                                <thead>
+                                <thead class="table-light">
                                     <tr>
                                         <th>Location</th>
                                         <th>Distance</th>
+                                        <th>Coords (X,Y)</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -51,11 +118,12 @@ else
                                     {
                                         <tr>
                                             <td>@cp.Name</td>
-                                            <td>@cp.DistanceFromStart miles</td>
+                                            <td>@cp.DistanceFromStart mi</td>
+                                            <td class="small text-muted">(@cp.MapPositionX%, @cp.MapPositionY%)</td>
                                             <td class="text-end">
-                                                <button class="btn btn-sm btn-outline-danger"
+                                                <button class="btn btn-sm btn-outline-danger py-0"
                                                         @onclick="() => HandleDeleteCheckpoint(cp.Id)">
-                                                    X
+                                                    ×
                                                 </button>
                                             </td>
                                         </tr>
@@ -128,7 +196,8 @@ else
 
     private Race? _race;
 
-    private Checkpoint _newCheckpoint = new();
+    // Initialize this with default 50,50 so the dot appears in the middle at first
+    private Checkpoint _newCheckpoint = new() { MapPositionX = 50, MapPositionY = 50 };
 
     // Task 6
     // Add Student List on Load
@@ -167,8 +236,8 @@ else
         // Save
         await RaceService.AddCheckpointAsync(_newCheckpoint);
 
-        // Reset the form
-        _newCheckpoint = new Checkpoint();
+        // Reset the form (Reset X/Y to center for the next one)
+        _newCheckpoint = new Checkpoint { MapPositionX = 50, MapPositionY = 50 };
 
         // Refresh the list
         await LoadRaceData();
