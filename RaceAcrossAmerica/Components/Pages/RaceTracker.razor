@@ -64,14 +64,33 @@ else
             <div class="col-md-3">
                 <div class="card p-3 h-100">
                     <h4>Leaderboard</h4>
-                    <p class="small text-muted">1 Lap = 1 Mile (Example)</p>
+                    <p class="small text-muted">1 Lap = 50 Mile (Example)</p>
 
+                    @* Div with dropdown to filter RaceParticipants by Group *@
+                    <div class="mb-3">
+                        <label class="small text-muted">Filter by Group:</label>
+                        <select class="form-select" @bind="_selectedGroup">
+                            <option value="All">Show All</option>
+                            @foreach (var group in _availableGroups)
+                            {
+                                <option value="@group">@group</option>
+                            }
+                        </select>
+                    </div>
+
+                    @* Div for RaceParticipant List with buttons to add or remove a lap *@
                     <div class="list-group list-group-flush" style="overflow-y: auto; max-height: 70vh;">
-                        @foreach (var p in _race.RaceParticipants.OrderByDescending(x => x.LapsCompleted))
+                        @foreach (var p in _race.RaceParticipants
+                                            .Where(p => _selectedGroup == "All" || (p.Student?.Group ?? "Unassigned") == _selectedGroup)
+                                            .OrderByDescending(x => x.LapsCompleted))
                         {
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <strong>@p.Student?.FullName</strong>
+                                    <div>
+                                        <strong>@p.Student?.FullName</strong>
+                                        <br />
+                                        <small class="text-muted">@p.Student?.Group</small>
+                                    </div>
                                     <span class="badge bg-primary rounded-pill">@p.LapsCompleted</span>
                                 </div>
                                 <div class="btn-group w-100">
