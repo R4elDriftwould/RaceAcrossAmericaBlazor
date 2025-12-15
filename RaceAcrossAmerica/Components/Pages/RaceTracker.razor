@@ -101,6 +101,10 @@ else
     // Hardcoded MilesPerLap
     private const int MilesPerLap = 50;
 
+    // Variables for Filtering
+    private string _selectedGroup = "All";
+    private List<string> _availableGroups = new();
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
@@ -113,6 +117,17 @@ else
         {
             NavManager.NavigateTo("/");
         }
+
+        // --- Calculate the Groups ---
+        // Look at all participants.
+        // Select their GroupName.
+        // 'Distinct' removes duplicates.
+        // 'Order' sorts them A-Z.
+        _availableGroups = _race.RaceParticipants
+            .Select(rp => rp.Student?.Group ?? "Unassigned")
+            .Distinct()
+            .OrderBy(g => g)
+            .ToList();
     }
 
     private async Task HandleAddLap(int studentId)
