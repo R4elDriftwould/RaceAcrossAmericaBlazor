@@ -11,95 +11,336 @@
 }
 else
 {
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-9 position-relative">
-                <div class="card shadow-sm">
-                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;">
+    <div class="container-fluid pb-5">
+
+        <div class="row g-3">
+            <div class="col-lg-9 position-relative">
+                <div class="card shadow-sm h-100">
+                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;" @onclick="ClearAllSelections">
 
                         <img src="/images/us_map.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" />
 
-                        @foreach (var cp in _race.Checkpoints)
+                        <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                            @if (_sortedCheckpoints.Count > 1)
+                            {
+                                for (int i = 0; i < _sortedCheckpoints.Count - 1; i++)
+                                {
+                                    var c1 = _sortedCheckpoints[i];
+                                    var c2 = _sortedCheckpoints[i + 1];
+                                    <line x1="@(c1.MapPositionX)%" y1="@(c1.MapPositionY)%"
+                                          x2="@(c2.MapPositionX)%" y2="@(c2.MapPositionY)%"
+                                          class="race-route-line" />
+                                }
+                            }
+
+                            @if (_selectedStudentId.HasValue && _selectedStudentPath.Any())
+                            {
+                                for (int i = 0; i < _selectedStudentPath.Count - 1; i++)
+                                {
+                                    var p1 = _selectedStudentPath[i];
+                                    var p2 = _selectedStudentPath[i + 1];
+                                    <line x1="@(p1.X)%" y1="@(p1.Y)%"
+                                          x2="@(p2.X)%" y2="@(p2.Y)%"
+                                          class="student-progress-line" />
+                                }
+                            }
+                        </svg>
+
+                        @foreach (var p in _filteredParticipants)
                         {
-                            <div title="@cp.Name (@cp.DistanceFromStart miles)"
+                            var pos = CalculateStudentPosition(p.LapsCompleted);
+                            bool isSelected = _selectedStudentId == p.StudentId;
+
+                            string bgColor = isSelected ? "#ffc107" : "#0078d4";
+                            string zIndex = isSelected ? "15" : "10";
+                            string scale = isSelected ? "scale(1.3)" : "scale(1)";
+                            string border = isSelected ? "2px solid #e6a700" : "2px solid white";
+
+                            <div @onclick="() => SelectStudent(p.StudentId)"
+                                 @onclick:stopPropagation="true"
+                                 title="@p.Student?.FullName"
+                                 style="position: absolute;
+                                                left: @(pos.X)%;
+                                                top: @(pos.Y)%;
+                                                width: 16px; height: 16px;
+                                                background-color: @bgColor;
+                                                border: @border;
+                                                border-radius: 50%;
+                                                transform: translate(-50%, -50%) @scale;
+                                                z-index: @zIndex;
+                                                cursor: pointer;
+                                                box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+                                                transition: all 0.2s ease;">
+                            </div>
+                        }
+
+                        @foreach (var cp in _sortedCheckpoints)
+                        {
+                            <div title="@cp.Name"
+                                 @onclick="() => SelectCheckpoint(cp)"
+                                 @onclick:stopPropagation="true"
                                  style="position: absolute;
                                                 left: @(cp.MapPositionX)%;
                                                 top: @(cp.MapPositionY)%;
-                                                width: 12px; height: 12px;
-                                                background-color: blue;
+                                                width: 14px; height: 14px;
+                                                background-color: #d13438;
+                                                border: 2px solid white;
                                                 border-radius: 50%;
                                                 transform: translate(-50%, -50%);
-                                                z-index: 1;">
+                                                z-index: 20;
+                                                cursor: pointer;
+                                                box-shadow: 0 2px 5px rgba(0,0,0,0.4);">
                             </div>
                             <div style="position: absolute;
                                                 left: @(cp.MapPositionX)%;
-                                                top: @(cp.MapPositionY + 2)%;
+                                                top: @(cp.MapPositionY + 3)%;
                                                 transform: translateX(-50%);
-                                                font-size: 0.7rem; font-weight: bold; color: #333;">
+                                                font-size: 0.7rem; font-weight: bold; color: #333;
+                                                z-index: 20; text-shadow: 1px 1px 2px white; pointer-events: none;">
                                 @cp.Name
                             </div>
                         }
 
-                        @foreach (var p in _race.RaceParticipants)
+                        @if (_selectedCheckpoint != null)
                         {
-                            var progress = CalculateProgress(p.LapsCompleted);
+                            <div class="checkpoint-popup"
+                                 style="left: @(_selectedCheckpoint.MapPositionX)%; top: @(_selectedCheckpoint.MapPositionY)%;">
 
-                            <div title="@p.Student?.FullName"
-                                 style="position: absolute;
-                                                left: @(progress.X)%;
-                                                top: @(progress.Y)%;
-                                                width: 16px; height: 16px;
-                                                background-color: red;
-                                                border: 2px solid white;
-                                                border-radius: 50%;
-                                                transform: translate(-50%, -50%);
-                                                z-index: 10;
-                                                box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                                <div class="popup-header">
+                                    <strong>@_selectedCheckpoint.Name</strong>
+                                    <span class="badge bg-secondary ms-2">@_selectedCheckpoint.DistanceFromStart mi</span>
+                                    <button class="close-btn ms-auto" @onclick="ClearCheckpointSelection">×</button>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(_selectedCheckpoint.Description))
+                                {
+                                    <div class="popup-desc">
+                                        @_selectedCheckpoint.Description
+                                    </div>
+                                }
+
+                                <div class="popup-body">
+                                    <small class="text-muted d-block mb-1">Students here:</small>
+                                    @if (_studentsAtCheckpoint.Any())
+                                    {
+                                        <ul class="mb-0">
+                                            @foreach (var s in _studentsAtCheckpoint)
+                                            {
+                                                <li>
+                                                    @s.Student?.FullName
+                                                    <span class="text-muted" style="font-size: 0.75rem;">(@(s.LapsCompleted* MilesPerLap) mi)</span>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <em class="text-muted small">No students currently in this section.</em>
+                                    }
+                                </div>
                             </div>
                         }
+
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-lg-3">
                 <div class="card p-3 h-100">
-                    <h4>Leaderboard</h4>
-                    <p class="small text-muted">1 Lap = 1 Mile (Example)</p>
+                    <h5 class="mb-3">Leaderboard</h5>
+                    <div class="mb-3">
+                        <select class="form-select form-select-sm" @bind="_filterGroup">
+                            <option value="All">All Groups</option>
+                            @foreach (var g in _availableGroups)
+                            {
+                                <option value="@g">@g</option>
+                            }
+                        </select>
+                    </div>
 
-                    <div class="list-group list-group-flush" style="overflow-y: auto; max-height: 70vh;">
-                        @foreach (var p in _race.RaceParticipants.OrderByDescending(x => x.LapsCompleted))
+                    @if (_selectedStudentId.HasValue)
+                    {
+                        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" @onclick="ClearStudentSelection">
+                            Show All
+                        </button>
+                    }
+
+                    <div class="list-group list-group-flush" style="overflow-y: auto; max-height: 500px;">
+                        @foreach (var p in _filteredParticipants)
                         {
-                            <div class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <strong>@p.Student?.FullName</strong>
+                            bool isSelected = _selectedStudentId == p.StudentId;
+                            string activeClass = isSelected ? "list-group-item-warning border-start border-4 border-warning" : "";
+
+                            <div class="list-group-item @activeClass p-2" style="cursor: pointer;" @onclick="() => SelectStudent(p.StudentId)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-truncate" style="max-width: 70%;">
+                                        <div class="fw-bold">@p.Student?.FullName</div>
+                                        <small class="text-muted" style="font-size: 0.75rem;">@p.Student?.Group</small>
+                                    </div>
                                     <span class="badge bg-primary rounded-pill">@p.LapsCompleted</span>
                                 </div>
-                                <div class="btn-group w-100">
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            @onclick="() => HandleRemoveLap(p.StudentId)">
-                                        -
-                                    </button>
-                                    <button class="btn btn-sm btn-success"
-                                            @onclick="() => HandleAddLap(p.StudentId)">
-                                        + Lap
-                                    </button>
-                                </div>
+                                @if (isSelected)
+                                {
+                                    <div class="btn-group w-100 btn-group-sm mt-2">
+                                        <button class="btn btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => HandleRemoveLap(p.StudentId)">-</button>
+                                        <button class="btn btn-success" @onclick:stopPropagation="true" @onclick="() => HandleAddLap(p.StudentId)">+ Lap</button>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Manage Students (Alphabetical)</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Group</th>
+                                        <th class="text-center">Laps</th>
+                                        <th class="text-center">Distance</th>
+                                        <th style="width: 150px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in _filteredParticipants.OrderBy(p => p.Student?.LastName).ThenBy(p => p.Student?.FirstName))
+                                    {
+                                        bool isSelected = _selectedStudentId == p.StudentId;
+                                        string rowClass = isSelected ? "table-warning" : "";
+
+                                        <tr class="@rowClass" style="cursor: pointer;" @onclick="() => SelectStudent(p.StudentId)">
+                                            <td class="fw-bold">@p.Student?.FullName</td>
+                                            <td><span class="badge bg-secondary text-dark bg-opacity-25">@p.Student?.Group</span></td>
+                                            <td class="text-center fw-bold text-primary">@p.LapsCompleted</td>
+                                            <td class="text-center text-muted">@(p.LapsCompleted* MilesPerLap) mi</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm w-100">
+                                                    <button class="btn btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => HandleRemoveLap(p.StudentId)">-</button>
+                                                    <button class="btn btn-success" @onclick:stopPropagation="true" @onclick="() => HandleAddLap(p.StudentId)">+ Lap</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <style>
+        .race-route-line {
+            stroke: #d13438;
+            stroke-width: 3;
+            stroke-dasharray: 5 5;
+            opacity: 0.7;
+        }
+
+        .student-progress-line {
+            stroke: #0078d4;
+            stroke-width: 4;
+            stroke-linecap: round;
+            opacity: 0.8;
+            fill: none;
+        }
+        /* POPUP STYLES */
+        .checkpoint-popup {
+            position: absolute;
+            width: 250px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translate(-50%, -105%); /* Sit above the pin */
+            padding: 10px;
+            font-size: 0.9rem;
+            z-index: 100; /* Highest priority */
+            border: 1px solid #ddd;
+        }
+            /* Tiny arrow at bottom of popup */
+            .checkpoint-popup::after {
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                margin-left: -8px;
+                border-width: 8px;
+                border-style: solid;
+                border-color: white transparent transparent transparent;
+            }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        .close-btn {
+            border: none;
+            background: none;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 5px;
+            color: #999;
+        }
+
+            .close-btn:hover {
+                color: #333;
+            }
+
+        .popup-desc {
+            font-style: italic;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .popup-body ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .popup-body li {
+            padding: 2px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+    </style>
 }
 
 @code {
-    [Parameter]
-    public int RaceId { get; set; }
+    [Parameter] public int RaceId { get; set; }
     private Race? _race;
+    private const double MilesPerLap = 50.0;
 
-    // Hardcoded MilesPerLap
-    private const int MilesPerLap = 50;
+    private string _filterGroup = "All";
+    private List<string> _availableGroups = new();
+    private int? _selectedStudentId = null;
+
+    // --- POPUP STATE ---
+    private Checkpoint? _selectedCheckpoint = null;
+    private List<RaceParticipant> _studentsAtCheckpoint = new();
+
+    private List<Checkpoint> _sortedCheckpoints = new();
+    private List<(double X, double Y)> _selectedStudentPath = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,10 +350,95 @@ else
     private async Task LoadData()
     {
         _race = await RaceService.GetRaceByIdAsync(RaceId);
-        if(_race == null)
+        if (_race == null) { NavManager.NavigateTo("/"); return; }
+
+        _sortedCheckpoints = _race.Checkpoints.OrderBy(c => c.DistanceFromStart).ToList();
+
+        _availableGroups = _race.RaceParticipants
+            .Select(p => p.Student?.Group ?? "Unassigned")
+            .Distinct().OrderBy(g => g).ToList();
+
+        if (_selectedStudentId.HasValue) UpdateSelectedPath();
+
+        // Refresh checkpoint data if one is open (in case laps changed)
+        if (_selectedCheckpoint != null) SelectCheckpoint(_selectedCheckpoint);
+    }
+
+    private IEnumerable<RaceParticipant> _filteredParticipants
+    {
+        get
         {
-            NavManager.NavigateTo("/");
+            if (_race == null) return Enumerable.Empty<RaceParticipant>();
+            var query = _race.RaceParticipants.AsEnumerable();
+            if (_filterGroup != "All")
+            {
+                query = query.Where(p => (p.Student?.Group ?? "Unassigned") == _filterGroup);
+            }
+            return query.OrderByDescending(p => p.LapsCompleted);
         }
+    }
+
+    // --- SELECTION ACTIONS ---
+
+    private void ClearAllSelections()
+    {
+        _selectedStudentId = null;
+        _selectedStudentPath.Clear();
+        _selectedCheckpoint = null;
+    }
+
+    private void SelectStudent(int studentId)
+    {
+        _selectedStudentId = studentId;
+        _selectedCheckpoint = null; // Close popup if selecting student
+        UpdateSelectedPath();
+    }
+
+    private void ClearStudentSelection()
+    {
+        _selectedStudentId = null;
+        _selectedStudentPath.Clear();
+    }
+
+    // --- CHECKPOINT POPUP LOGIC ---
+    private void SelectCheckpoint(Checkpoint cp)
+    {
+        _selectedCheckpoint = cp;
+        _selectedStudentId = null; // Deselect student to focus on map
+        _selectedStudentPath.Clear();
+
+        // Calculate who is "At" this checkpoint
+        // Logic: Find the LAST checkpoint passed by the student. If it matches this one, they are here.
+        _studentsAtCheckpoint = new List<RaceParticipant>();
+
+        if (_race == null) return;
+
+        foreach (var p in _race.RaceParticipants)
+        {
+            double studentMiles = p.LapsCompleted * MilesPerLap;
+
+            // Find the last passed checkpoint
+            var lastPassed = _sortedCheckpoints
+                .Where(c => c.DistanceFromStart <= studentMiles)
+                .OrderByDescending(c => c.DistanceFromStart)
+                .FirstOrDefault();
+
+            // If the last thing they passed is THIS checkpoint, add them to list
+            if (lastPassed != null && lastPassed.Id == cp.Id)
+            {
+                _studentsAtCheckpoint.Add(p);
+            }
+            else if (lastPassed == null && cp.DistanceFromStart == 0)
+            {
+                // Edge case: They are at the start line (0 miles)
+                _studentsAtCheckpoint.Add(p);
+            }
+        }
+    }
+
+    private void ClearCheckpointSelection()
+    {
+        _selectedCheckpoint = null;
     }
 
     private async Task HandleAddLap(int studentId)
@@ -127,24 +453,58 @@ else
         await LoadData();
     }
 
-    // This function decides where to draw the Red Dot on the map.
-    // For now, let's make it move in a straight line from Left (0%) to Right (100%).
-    // In a real app, you would use complex math to follow the checkpoints.
-    private (double X, double Y) CalculateProgress(int laps)
+    private void UpdateSelectedPath()
     {
-        double totalMilesRun = laps * MilesPerLap;
-        double percentage = 0;
+        _selectedStudentPath.Clear();
+        if (!_selectedStudentId.HasValue) return;
 
-        if (_race.TotalDistanceMiles > 0)
+        var participant = _race.RaceParticipants.FirstOrDefault(p => p.StudentId == _selectedStudentId);
+        if (participant == null) return;
+
+        double currentMiles = participant.LapsCompleted * MilesPerLap;
+
+        if (_sortedCheckpoints.Any())
         {
-            percentage = (totalMilesRun / _race.TotalDistanceMiles) * 100;
+            var start = _sortedCheckpoints.First();
+            _selectedStudentPath.Add((start.MapPositionX, start.MapPositionY));
+
+            foreach (var cp in _sortedCheckpoints.Skip(1))
+            {
+                if (cp.DistanceFromStart <= currentMiles)
+                {
+                    _selectedStudentPath.Add((cp.MapPositionX, cp.MapPositionY));
+                }
+                else { break; }
+            }
         }
 
-        // Clamp between 0 and 100
-        if (percentage > 100) percentage = 100;
+        var currentPos = CalculateStudentPosition(participant.LapsCompleted);
+        _selectedStudentPath.Add((currentPos.X, currentPos.Y));
+    }
 
-        // Simple visual: Move from X=5% to X=95%. Keep Y at 50% (Middle of map).
-        // You can get fancier later!
-        return (5 + (percentage * 0.9), 50);
+    private (double X, double Y) CalculateStudentPosition(int laps)
+    {
+        double currentMiles = laps * MilesPerLap;
+        if (!_sortedCheckpoints.Any()) return (50, 50);
+
+        if (currentMiles <= _sortedCheckpoints.First().DistanceFromStart)
+            return (_sortedCheckpoints.First().MapPositionX, _sortedCheckpoints.First().MapPositionY);
+
+        if (currentMiles >= _sortedCheckpoints.Last().DistanceFromStart)
+            return (_sortedCheckpoints.Last().MapPositionX, _sortedCheckpoints.Last().MapPositionY);
+
+        var prevCp = _sortedCheckpoints.LastOrDefault(c => c.DistanceFromStart <= currentMiles);
+        var nextCp = _sortedCheckpoints.FirstOrDefault(c => c.DistanceFromStart > currentMiles);
+
+        if (prevCp == null || nextCp == null) return (50, 50);
+
+        double segmentLength = nextCp.DistanceFromStart - prevCp.DistanceFromStart;
+        double distanceIntoSegment = currentMiles - prevCp.DistanceFromStart;
+        double ratio = segmentLength > 0 ? distanceIntoSegment / segmentLength : 0;
+
+        double x = prevCp.MapPositionX + (nextCp.MapPositionX - prevCp.MapPositionX) * ratio;
+        double y = prevCp.MapPositionY + (nextCp.MapPositionY - prevCp.MapPositionY) * ratio;
+
+        return (x, y);
     }
 }
