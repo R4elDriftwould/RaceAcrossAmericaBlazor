@@ -30,11 +30,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 
 
-builder.Services.AddIdentityCore<ApplicationUser>(options =>
-    {
-        options.SignIn.RequireConfirmedAccount = false;
-        options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
-    })
+builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
