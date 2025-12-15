@@ -8,44 +8,37 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <AuthorizeView>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" style="color: white; text-decoration: none;" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        </AuthorizeView>
-
-        <AuthorizeView>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" style="color: white; text-decoration: none;" href="students">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Students
-            </NavLink>
-        </div>
-        </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Race Manager
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="students">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Students
+                    </NavLink>
+                </div>
+
+                <div class="nav-divider my-2 border-top border-secondary"></div>
+
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Manage">
                         <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
                     </NavLink>
                 </div>
+
                 <div class="nav-item px-3">
                     <form action="Account/Logout" method="post">
                         <AntiforgeryToken />
                         <input type="hidden" name="ReturnUrl" value="" />
-                        <button type="submit" class="nav-link" style="border: none; background: none; width: 100%; text-align: left;">
+                        <button type="submit" class="nav-link" style="color: white; text-decoration: none; border: none; background: none; width: 100%; text-align: left; color: white;">
                             <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
                         </button>
                     </form>
-                </div>
-            </Authorized>
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Register">
-                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> Register Admin
-                    </NavLink>
                 </div>
             </Authorized>
 
@@ -55,7 +48,14 @@
                         <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
                     </NavLink>
                 </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Register">
+                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> Register Admin
+                    </NavLink>
+                </div>
             </NotAuthorized>
         </AuthorizeView>
+
     </nav>
 </div>
