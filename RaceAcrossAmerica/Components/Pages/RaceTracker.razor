@@ -12,11 +12,11 @@
 else
 {
     <div class="container-fluid pb-5">
-        <div class="row g-3">
 
+        <div class="row g-3">
             <div class="col-lg-9 position-relative">
                 <div class="card shadow-sm h-100">
-                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;">
+                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;" @onclick="ClearAllSelections">
 
                         <img src="/images/us_map.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" />
 
@@ -57,6 +57,7 @@ else
                             string border = isSelected ? "2px solid #e6a700" : "2px solid white";
 
                             <div @onclick="() => SelectStudent(p.StudentId)"
+                                 @onclick:stopPropagation="true"
                                  title="@p.Student?.FullName"
                                  style="position: absolute;
                                                 left: @(pos.X)%;
@@ -75,11 +76,13 @@ else
 
                         @foreach (var cp in _sortedCheckpoints)
                         {
-                            <div title="@cp.Name (@cp.DistanceFromStart miles)"
+                            <div title="@cp.Name"
+                                 @onclick="() => SelectCheckpoint(cp)"
+                                 @onclick:stopPropagation="true"
                                  style="position: absolute;
                                                 left: @(cp.MapPositionX)%;
                                                 top: @(cp.MapPositionY)%;
-                                                width: 12px; height: 12px;
+                                                width: 14px; height: 14px;
                                                 background-color: #d13438;
                                                 border: 2px solid white;
                                                 border-radius: 50%;
@@ -97,6 +100,47 @@ else
                                 @cp.Name
                             </div>
                         }
+
+                        @if (_selectedCheckpoint != null)
+                        {
+                            <div class="checkpoint-popup"
+                                 style="left: @(_selectedCheckpoint.MapPositionX)%; top: @(_selectedCheckpoint.MapPositionY)%;">
+
+                                <div class="popup-header">
+                                    <strong>@_selectedCheckpoint.Name</strong>
+                                    <span class="badge bg-secondary ms-2">@_selectedCheckpoint.DistanceFromStart mi</span>
+                                    <button class="close-btn ms-auto" @onclick="ClearCheckpointSelection">×</button>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(_selectedCheckpoint.Description))
+                                {
+                                    <div class="popup-desc">
+                                        @_selectedCheckpoint.Description
+                                    </div>
+                                }
+
+                                <div class="popup-body">
+                                    <small class="text-muted d-block mb-1">Students here:</small>
+                                    @if (_studentsAtCheckpoint.Any())
+                                    {
+                                        <ul class="mb-0">
+                                            @foreach (var s in _studentsAtCheckpoint)
+                                            {
+                                                <li>
+                                                    @s.Student?.FullName
+                                                    <span class="text-muted" style="font-size: 0.75rem;">(@(s.LapsCompleted* MilesPerLap) mi)</span>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <em class="text-muted small">No students currently in this section.</em>
+                                    }
+                                </div>
+                            </div>
+                        }
+
                     </div>
                 </div>
             </div>
@@ -104,7 +148,6 @@ else
             <div class="col-lg-3">
                 <div class="card p-3 h-100">
                     <h5 class="mb-3">Leaderboard</h5>
-
                     <div class="mb-3">
                         <select class="form-select form-select-sm" @bind="_filterGroup">
                             <option value="All">All Groups</option>
@@ -117,7 +160,7 @@ else
 
                     @if (_selectedStudentId.HasValue)
                     {
-                        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" @onclick="ClearSelection">
+                        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" @onclick="ClearStudentSelection">
                             Show All
                         </button>
                     }
@@ -136,7 +179,6 @@ else
                                     </div>
                                     <span class="badge bg-primary rounded-pill">@p.LapsCompleted</span>
                                 </div>
-
                                 @if (isSelected)
                                 {
                                     <div class="btn-group w-100 btn-group-sm mt-2">
@@ -195,7 +237,6 @@ else
                 </div>
             </div>
         </div>
-
     </div>
 
     <style>
@@ -213,6 +254,75 @@ else
             opacity: 0.8;
             fill: none;
         }
+        /* POPUP STYLES */
+        .checkpoint-popup {
+            position: absolute;
+            width: 250px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translate(-50%, -105%); /* Sit above the pin */
+            padding: 10px;
+            font-size: 0.9rem;
+            z-index: 100; /* Highest priority */
+            border: 1px solid #ddd;
+        }
+            /* Tiny arrow at bottom of popup */
+            .checkpoint-popup::after {
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                margin-left: -8px;
+                border-width: 8px;
+                border-style: solid;
+                border-color: white transparent transparent transparent;
+            }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        .close-btn {
+            border: none;
+            background: none;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 5px;
+            color: #999;
+        }
+
+            .close-btn:hover {
+                color: #333;
+            }
+
+        .popup-desc {
+            font-style: italic;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .popup-body ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .popup-body li {
+            padding: 2px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
     </style>
 }
 
@@ -224,6 +334,10 @@ else
     private string _filterGroup = "All";
     private List<string> _availableGroups = new();
     private int? _selectedStudentId = null;
+
+    // --- POPUP STATE ---
+    private Checkpoint? _selectedCheckpoint = null;
+    private List<RaceParticipant> _studentsAtCheckpoint = new();
 
     private List<Checkpoint> _sortedCheckpoints = new();
     private List<(double X, double Y)> _selectedStudentPath = new();
@@ -245,40 +359,86 @@ else
             .Distinct().OrderBy(g => g).ToList();
 
         if (_selectedStudentId.HasValue) UpdateSelectedPath();
+
+        // Refresh checkpoint data if one is open (in case laps changed)
+        if (_selectedCheckpoint != null) SelectCheckpoint(_selectedCheckpoint);
     }
 
-    // Returns filtered student list (By default sorted by Laps for Leaderboard)
     private IEnumerable<RaceParticipant> _filteredParticipants
     {
         get
         {
             if (_race == null) return Enumerable.Empty<RaceParticipant>();
-
             var query = _race.RaceParticipants.AsEnumerable();
-
             if (_filterGroup != "All")
             {
                 query = query.Where(p => (p.Student?.Group ?? "Unassigned") == _filterGroup);
             }
-
-            // Note: We do NOT filter by Selection here anymore (hiding others),
-            // because you need to see the full Alphabetical list at the bottom.
-            // If you want the MAP to hide others, we handle that in the visual loop.
-
             return query.OrderByDescending(p => p.LapsCompleted);
         }
+    }
+
+    // --- SELECTION ACTIONS ---
+
+    private void ClearAllSelections()
+    {
+        _selectedStudentId = null;
+        _selectedStudentPath.Clear();
+        _selectedCheckpoint = null;
     }
 
     private void SelectStudent(int studentId)
     {
         _selectedStudentId = studentId;
+        _selectedCheckpoint = null; // Close popup if selecting student
         UpdateSelectedPath();
     }
 
-    private void ClearSelection()
+    private void ClearStudentSelection()
     {
         _selectedStudentId = null;
         _selectedStudentPath.Clear();
+    }
+
+    // --- CHECKPOINT POPUP LOGIC ---
+    private void SelectCheckpoint(Checkpoint cp)
+    {
+        _selectedCheckpoint = cp;
+        _selectedStudentId = null; // Deselect student to focus on map
+        _selectedStudentPath.Clear();
+
+        // Calculate who is "At" this checkpoint
+        // Logic: Find the LAST checkpoint passed by the student. If it matches this one, they are here.
+        _studentsAtCheckpoint = new List<RaceParticipant>();
+
+        if (_race == null) return;
+
+        foreach (var p in _race.RaceParticipants)
+        {
+            double studentMiles = p.LapsCompleted * MilesPerLap;
+
+            // Find the last passed checkpoint
+            var lastPassed = _sortedCheckpoints
+                .Where(c => c.DistanceFromStart <= studentMiles)
+                .OrderByDescending(c => c.DistanceFromStart)
+                .FirstOrDefault();
+
+            // If the last thing they passed is THIS checkpoint, add them to list
+            if (lastPassed != null && lastPassed.Id == cp.Id)
+            {
+                _studentsAtCheckpoint.Add(p);
+            }
+            else if (lastPassed == null && cp.DistanceFromStart == 0)
+            {
+                // Edge case: They are at the start line (0 miles)
+                _studentsAtCheckpoint.Add(p);
+            }
+        }
+    }
+
+    private void ClearCheckpointSelection()
+    {
+        _selectedCheckpoint = null;
     }
 
     private async Task HandleAddLap(int studentId)
@@ -314,10 +474,7 @@ else
                 {
                     _selectedStudentPath.Add((cp.MapPositionX, cp.MapPositionY));
                 }
-                else
-                {
-                    break;
-                }
+                else { break; }
             }
         }
 
@@ -328,7 +485,6 @@ else
     private (double X, double Y) CalculateStudentPosition(int laps)
     {
         double currentMiles = laps * MilesPerLap;
-
         if (!_sortedCheckpoints.Any()) return (50, 50);
 
         if (currentMiles <= _sortedCheckpoints.First().DistanceFromStart)
