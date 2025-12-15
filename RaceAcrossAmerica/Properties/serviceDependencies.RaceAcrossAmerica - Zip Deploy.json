@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "mssql2": {
+      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('serviceConnectorResourceGroupName')]/providers/Microsoft.Web/sites/RaceAcrossAmerica/providers/Microsoft.ServiceLinker/linkers/DefaultConnetion_87FDA16EC0",
+      "secretStore": "AzureAppSettings",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/raceacrossamerica-bethune-dbserver/databases/RaceAcrossAmerica-Bethune_db",
+      "type": "mssql.azure",
+      "connectionId": "DefaultConnetion"
+    }
+  }
+}
