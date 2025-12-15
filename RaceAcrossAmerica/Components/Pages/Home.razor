@@ -1,0 +1,104 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using RaceAcrossAmerica.Data
+@using RaceAcrossAmerica.Services
+@inject RaceManagerService RaceService
+
+<h3>Race Manager</h3>
+
+<div class="card p-3 mb-4 bg-light">
+    <h5>Create New Race</h5>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label>Race Title</label>
+            <input class="form-control" @bind-value="_newRace.Title" placeholder="e.g. 2025 Race" />
+        </div>
+        <div class="col-md-4">
+            <label>Total Miles</label>
+            <input type="number" class="form-control" @bind-value="_newRace.TotalDistanceMiles" />
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" @onclick="HandleCreateRace">Create</button>
+        </div>
+    </div>
+</div>
+
+@if(_races == null)
+{
+    <p>Loading Races...</p>
+}
+else if(_races.Count == 0)
+{
+    <p>No races found. Create a new one above!</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Distance</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var race in _races)
+            {
+                <tr>
+                    <td>@race.Title</td>
+                    <td>@race.TotalDistanceMiles miles</td>
+                    <td>
+                        @if (race.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Finished</span>
+                        }
+                    </td>
+                    <td>
+                        <a href="/race/@race.Id" class="btn btn-sm btn-outline-primary">Manage</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code{
+    // Create variable for Race List
+    // Default create new Race object
+    // Function to Load Races using GetAllRacesAsync using RaceService
+    // Function to handle creating a new race using RaceService.CreateRaceAsync
+        // After creating a new race reload the race list w/ LoadRace()
+    // OnInitialized function to onload populate Race List
+
+    private List<Race>? _races;
+
+    private Race _newRace = new Race { Title = "", IsActive = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRace();
+    }
+
+    private async Task LoadRace()
+    {
+        _races = await RaceService.GetAllRacesAsync();
+    }
+
+    private async Task HandleCreateRace()
+    {
+        if (string.IsNullOrEmpty(_newRace.Title)) return;
+
+        await RaceService.CreateRaceAsync(_newRace);
+
+        // Reset form
+        _newRace = new Race { Title = "", IsActive = true };
+
+        await LoadRace();
+    }
+}
+

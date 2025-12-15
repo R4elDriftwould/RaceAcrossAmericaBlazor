@@ -1,0 +1,195 @@
+﻿@page "/race/{RaceId:int}"
+@rendermode InteractiveServer
+@using RaceAcrossAmerica.Data
+@using RaceAcrossAmerica.Services
+@inject RaceManagerService RaceService
+@inject NavigationManager NavManager
+
+@if (_race == null)
+{
+    <p><em>Loading race data...</em></p>
+}
+else
+{
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>@_race.Title</h3>
+            <span class="badge bg-primary">@_race.TotalDistanceMiles Miles</span>
+        </div>
+
+        <a href="/tracker/@_race.Id" class="btn btn-warning">Launch Tracker</a>
+
+        <div class="row">
+
+            <div class="col-md-8">
+                <div class="card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5>Checkpoints</h5>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Name (e.g. Kansas City)"
+                               @bind-value="_newCheckpoint.Name" />
+                        <input type="number" class="form-control" placeholder="Miles" style="max-width: 100px;"
+                               @bind-value="_newCheckpoint.DistanceFromStart" />
+                        <button class="btn btn-primary" @onclick="HandleAddCheckpoint">Add</button>
+                    </div>
+
+                    @if (_race.Checkpoints.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Location</th>
+                                        <th>Distance</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var cp in _race.Checkpoints.OrderBy(c => c.DistanceFromStart))
+                                    {
+                                        <tr>
+                                            <td>@cp.Name</td>
+                                            <td>@cp.DistanceFromStart miles</td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        @onclick="() => HandleDeleteCheckpoint(cp.Id)">
+                                                    X
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted fst-italic">No checkpoints set. Add the Start Line (0 miles)!</p>
+                    }
+                </div>
+            </div>
+
+            @* 
+            Div for displaying students participating 
+            using foreach loop on _race.RaceParticipants 
+            *@
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h5>Students</h5>
+
+                    @if (_race.RaceParticipants.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var p in _race.RaceParticipants)
+                            {
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>@p.Student?.FullName</span>
+                                    <span class="badge bg-secondary">@p.LapsCompleted Laps</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No students yet.</p>
+                    }
+
+                    <div class="mt-3">
+                        <label class="form-label small text-muted">Add Student to Race:</label>
+                        <div class="input-group">
+                            <select class="form-select" @bind="_selectedStudentId">
+                                <option value="0">Select a student...</option>
+                                @foreach (var student in _allStudents)
+                                {
+                                    <option value="@student.Id">@student.FullName</option>
+                                }
+                            </select>
+
+                            <button class="btn btn-success" @onclick="HandleAddStudentToRace">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    // Get RaceId from parameter
+    // Logic: Fetch _race based on RaceId using RaceService.GetRaceByIdAsync
+    [Parameter]
+    public int RaceId { get; set; }
+
+    private Race? _race;
+
+    private Checkpoint _newCheckpoint = new();
+
+    // Task 6
+    // Add Student List on Load
+    // Select student dropdown
+    // Handle Adding Student to Race
+
+    private List<Student> _allStudents = new();
+    private int _selectedStudentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _race = await RaceService.GetRaceByIdAsync(RaceId);
+
+        // If race cannot be found, navigate back to home
+        if(_race == null)
+        {
+            NavManager.NavigateTo("/");
+        }
+
+        _allStudents = await RaceService.GetAllStudentsAsync();
+    }
+
+    private async Task LoadRaceData()
+    {
+        _race = await RaceService.GetRaceByIdAsync(RaceId);
+        if (_race == null) NavManager.NavigateTo("/");
+    }
+
+    private async Task HandleAddCheckpoint()
+    {
+        if (string.IsNullOrWhiteSpace(_newCheckpoint.Name)) return;
+
+        // Link the checkpoint to THIS race
+        _newCheckpoint.RaceId = RaceId;
+
+        // Save
+        await RaceService.AddCheckpointAsync(_newCheckpoint);
+
+        // Reset the form
+        _newCheckpoint = new Checkpoint();
+
+        // Refresh the list
+        await LoadRaceData();
+    }
+
+    private async Task HandleDeleteCheckpoint(int id)
+    {
+        await RaceService.DeleteCheckpointAsync(id);
+        await LoadRaceData();
+    }
+
+    // Task 6 - Handle Adding Student to RaceParticipants for Race
+    private async Task HandleAddStudentToRace()
+    {
+        // Validation
+        if (_selectedStudentId == 0) return;
+        // Run the service to add the student to Student Table
+        await RaceService.AddStudentToRaceAsync(RaceId, _selectedStudentId);
+
+        _selectedStudentId = 0;
+
+        await LoadRaceData();
+    }
+}

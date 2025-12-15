@@ -1,0 +1,150 @@
+﻿@page "/tracker/{RaceId:int}"
+@rendermode InteractiveServer
+@using RaceAcrossAmerica.Data
+@using RaceAcrossAmerica.Services
+@inject RaceManagerService RaceService
+@inject NavigationManager NavManager
+
+@if (_race == null)
+{
+    <p>Loading Tracker...</p>
+}
+else
+{
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-9 position-relative">
+                <div class="card shadow-sm">
+                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;">
+
+                        <img src="/images/us_map.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" />
+
+                        @foreach (var cp in _race.Checkpoints)
+                        {
+                            <div title="@cp.Name (@cp.DistanceFromStart miles)"
+                                 style="position: absolute;
+                                                left: @(cp.MapPositionX)%;
+                                                top: @(cp.MapPositionY)%;
+                                                width: 12px; height: 12px;
+                                                background-color: blue;
+                                                border-radius: 50%;
+                                                transform: translate(-50%, -50%);
+                                                z-index: 1;">
+                            </div>
+                            <div style="position: absolute;
+                                                left: @(cp.MapPositionX)%;
+                                                top: @(cp.MapPositionY + 2)%;
+                                                transform: translateX(-50%);
+                                                font-size: 0.7rem; font-weight: bold; color: #333;">
+                                @cp.Name
+                            </div>
+                        }
+
+                        @foreach (var p in _race.RaceParticipants)
+                        {
+                            var progress = CalculateProgress(p.LapsCompleted);
+
+                            <div title="@p.Student?.FullName"
+                                 style="position: absolute;
+                                                left: @(progress.X)%;
+                                                top: @(progress.Y)%;
+                                                width: 16px; height: 16px;
+                                                background-color: red;
+                                                border: 2px solid white;
+                                                border-radius: 50%;
+                                                transform: translate(-50%, -50%);
+                                                z-index: 10;
+                                                box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <h4>Leaderboard</h4>
+                    <p class="small text-muted">1 Lap = 1 Mile (Example)</p>
+
+                    <div class="list-group list-group-flush" style="overflow-y: auto; max-height: 70vh;">
+                        @foreach (var p in _race.RaceParticipants.OrderByDescending(x => x.LapsCompleted))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>@p.Student?.FullName</strong>
+                                    <span class="badge bg-primary rounded-pill">@p.LapsCompleted</span>
+                                </div>
+                                <div class="btn-group w-100">
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => HandleRemoveLap(p.StudentId)">
+                                        -
+                                    </button>
+                                    <button class="btn btn-sm btn-success"
+                                            @onclick="() => HandleAddLap(p.StudentId)">
+                                        + Lap
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int RaceId { get; set; }
+    private Race? _race;
+
+    // Hardcoded MilesPerLap
+    private const int MilesPerLap = 50;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _race = await RaceService.GetRaceByIdAsync(RaceId);
+        if(_race == null)
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleAddLap(int studentId)
+    {
+        await RaceService.AddLapAsync(RaceId, studentId);
+        await LoadData();
+    }
+
+    private async Task HandleRemoveLap(int studentId)
+    {
+        await RaceService.RemoveLapAsync(RaceId, studentId);
+        await LoadData();
+    }
+
+    // This function decides where to draw the Red Dot on the map.
+    // For now, let's make it move in a straight line from Left (0%) to Right (100%).
+    // In a real app, you would use complex math to follow the checkpoints.
+    private (double X, double Y) CalculateProgress(int laps)
+    {
+        double totalMilesRun = laps * MilesPerLap;
+        double percentage = 0;
+
+        if (_race.TotalDistanceMiles > 0)
+        {
+            percentage = (totalMilesRun / _race.TotalDistanceMiles) * 100;
+        }
+
+        // Clamp between 0 and 100
+        if (percentage > 100) percentage = 100;
+
+        // Simple visual: Move from X=5% to X=95%. Keep Y at 50% (Middle of map).
+        // You can get fancier later!
+        return (5 + (percentage * 0.9), 50);
+    }
+}

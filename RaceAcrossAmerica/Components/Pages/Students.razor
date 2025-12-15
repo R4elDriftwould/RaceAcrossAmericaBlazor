@@ -1,0 +1,102 @@
+﻿@page "/students"
+@rendermode InteractiveServer
+@using RaceAcrossAmerica.Data
+@using RaceAcrossAmerica.Services
+@inject RaceManagerService RaceService
+
+<h3>Student Roster</h3>
+
+<div class="card p-3 mb-4 bg-light">
+    <h5>Add New Student</h5>
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input class="form-control" placeholder="First Name" @bind-value="_newStudent.FirstName" />
+        </div>
+        <div class="col-md-4">
+            <input class="form-control" placeholder="Last Name" @bind-value="_newStudent.LastName" />
+        </div>
+        <div class="col-md-3">
+            <input class="form-control" placeholder="Group (e.g. 5th Grade)" @bind-value="_newStudent.Group" />
+        </div>
+        <div class="col-md-1">
+            <button class="btn btn-success w-100" @onclick="HandleAddStudent">Add</button>
+        </div>
+    </div>
+</div>
+
+@if (_students == null)
+{
+    <p>Loading...</p>
+}
+else if (!_students.Any())
+{
+    <p>No students found. Add one above!</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Group</th>
+                <th>Name</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var student in _students)
+            {
+                <tr>
+                    <td><span class="badge bg-info text-dark">@student.Group</span></td>
+                    <td>@student.FullName</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => HandleDeleteStudent(student.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    // State variable, _students
+    // Initialize Student object with blank values
+    // method to Load Students
+    // method to Handle Adding Student
+    // method to Handle Deleting Student
+
+    private List<Student>? _students;
+
+    private Student _newStudent = new() { FirstName = "", LastName = "", Group = "" };
+
+    // Setup
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStudents();
+    }
+
+    private async Task LoadStudents()
+    {
+        _students = await RaceService.GetAllStudentsAsync();
+    }
+
+    private async Task HandleAddStudent()
+    {
+        // validation
+        if (string.IsNullOrWhiteSpace(_newStudent.FirstName)) return;
+
+        await RaceService.CreateStudentAsync(_newStudent);
+
+        // Reset form
+        _newStudent = new() { FirstName = "", LastName = "", Group = _newStudent.Group }; // Keep group name for faster entry
+        await LoadStudents();
+    }
+
+    private async Task HandleDeleteStudent(int id)
+    {
+        await RaceService.DeleteStudentAsync(id);
+        await LoadStudents();
+    }
+}
