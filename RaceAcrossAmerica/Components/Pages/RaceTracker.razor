@@ -82,6 +82,12 @@ else
                         {
                             var pos = CalculateStudentPosition(p.LapsCompleted);
                             bool isSelected = _selectedStudentId == p.StudentId;
+
+                            // --- NEW: HIDE OTHERS LOGIC ---
+                            // If a student is selected, and this specific 'p' is NOT the selected one, skip it.
+                            if (_selectedStudentId.HasValue && !isSelected) continue;
+                            // ------------------------------
+
                             string zIndex = isSelected ? "30" : "15";
 
                             <div @onclick="() => SelectStudent(p.StudentId)" @onclick:stopPropagation="true"
