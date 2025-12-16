@@ -1,66 +1,68 @@
 ﻿@page "/students"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
-@rendermode InteractiveServer
 @using RaceAcrossAmerica.Data
 @using RaceAcrossAmerica.Services
+@attribute [Authorize]
 @inject RaceManagerService RaceService
+@inject ISnackbar Snackbar
 
-<h3>Student Roster</h3>
+<PageTitle>Student Roster</PageTitle>
 
-<div class="card p-3 mb-4 bg-light">
-    <h5>Add New Student</h5>
-    <div class="row g-2">
-        <div class="col-md-4">
-            <input class="form-control" placeholder="First Name" @bind-value="_newStudent.FirstName" />
-        </div>
-        <div class="col-md-4">
-            <input class="form-control" placeholder="Last Name" @bind-value="_newStudent.LastName" />
-        </div>
-        <div class="col-md-3">
-            <input class="form-control" placeholder="Group (e.g. 5th Grade)" @bind-value="_newStudent.Group" />
-        </div>
-        <div class="col-md-1">
-            <button class="btn btn-success w-100" @onclick="HandleAddStudent">Add</button>
-        </div>
-    </div>
-</div>
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h3" Class="mb-4">Student Roster</MudText>
 
-@if (_students == null)
-{
-    <p>Loading...</p>
-}
-else if (!_students.Any())
-{
-    <p>No students found. Add one above!</p>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Group</th>
-                <th>Name</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var student in _students)
-            {
-                <tr>
-                    <td><span class="badge bg-info text-dark">@student.Group</span></td>
-                    <td>@student.FullName</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => HandleDeleteStudent(student.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+    <MudPaper Class="pa-4 mb-4" Elevation="3">
+        <MudText Typo="Typo.h5" GutterBottom="true">Add New Student</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_newStudent.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_newStudent.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="_newStudent.Group" Label="Group (e.g. 5th Grade)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="1" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true" OnClick="HandleAddStudent">Add</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_students == null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="_students" Hover="true" Striped="true" Filter="new Func<Student, bool>(FilterFunc1)" Elevation="3">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Current Students</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString1" Placeholder="Search students..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortBy="new Func<Student, object>(x => x.Group)">Group</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Student, object>(x => x.LastName)">Last Name</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Student, object>(x => x.FirstName)">First Name</MudTableSortLabel></MudTh>
+                <MudTh>Action</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Group">
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small">@context.Group</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Last Name">@context.LastName</MudTd>
+                <MudTd DataLabel="First Name">@context.FirstName</MudTd>
+                <MudTd DataLabel="Action">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => HandleDeleteStudent(context.Id))">Delete</MudButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
 
 @code {
     // State variable, _students
@@ -70,10 +72,9 @@ else
     // method to Handle Deleting Student
 
     private List<Student>? _students;
-
     private Student _newStudent = new() { FirstName = "", LastName = "", Group = "" };
+    private string searchString1 = "";
 
-    // Setup
     protected override async Task OnInitializedAsync()
     {
         await LoadStudents();
@@ -86,19 +87,42 @@ else
 
     private async Task HandleAddStudent()
     {
-        // validation
-        if (string.IsNullOrWhiteSpace(_newStudent.FirstName)) return;
+        if (string.IsNullOrWhiteSpace(_newStudent.FirstName))
+        {
+            Snackbar.Add("First Name is required", Severity.Warning);
+            return;
+        }
 
         await RaceService.CreateStudentAsync(_newStudent);
+        Snackbar.Add("Student Added", Severity.Success);
 
-        // Reset form
-        _newStudent = new() { FirstName = "", LastName = "", Group = _newStudent.Group }; // Keep group name for faster entry
+        // Reset form but keep group for faster entry
+        var currentGroup = _newStudent.Group;
+        _newStudent = new() { FirstName = "", LastName = "", Group = currentGroup };
+
         await LoadStudents();
     }
 
     private async Task HandleDeleteStudent(int id)
     {
         await RaceService.DeleteStudentAsync(id);
+        Snackbar.Add("Student Deleted", Severity.Error);
         await LoadStudents();
+    }
+
+    // Search Logic
+    private bool FilterFunc1(Student student) => FilterFunc(student, searchString1);
+
+    private bool FilterFunc(Student student, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (student.FirstName.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (student.LastName.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (student.Group.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
     }
 }

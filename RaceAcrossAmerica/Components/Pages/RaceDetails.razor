@@ -1,201 +1,167 @@
 ﻿@page "/race/{RaceId:int}"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
-@rendermode InteractiveServer
 @using RaceAcrossAmerica.Data
 @using RaceAcrossAmerica.Services
+@attribute [Authorize]
 @inject RaceManagerService RaceService
 @inject NavigationManager NavManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Race Details</PageTitle>
 
 @if (_race == null)
 {
-    <p><em>Loading race data...</em></p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <div class="container">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>@_race.Title</h3>
-            <span class="badge bg-primary">@_race.TotalDistanceMiles Miles</span>
+            <div>
+                <MudText Typo="Typo.h3">@_race.Title</MudText>
+                <MudChip T="string" Color="Color.Primary" Class="mt-2">@_race.TotalDistanceMiles Miles</MudChip>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Launch" Href="@($"/tracker/{_race.Id}")" Target="_blank">
+                Launch Tracker
+            </MudButton>
         </div>
 
-        <a href="/tracker/@_race.Id" class="btn btn-warning">Launch Tracker</a>
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-4 mb-4" Elevation="3">
+                    <MudText Typo="Typo.h5" GutterBottom="true">Checkpoint Manager</MudText>
 
-        <div class="row">
-
-            <div class="col-md-8">
-                <div class="card p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5>Checkpoint Manager</h5>
-                    </div>
-
-                    @* Div for Map and Checkpoint Pins, with a Ghost pin for viewing new Checkpoint *@
-                    <div class="mb-4 border rounded" style="position: relative; width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; overflow: hidden;">
-
+                    <MudPaper Class="mb-4 overflow-hidden position-relative" Style="width: 100%; aspect-ratio: 16/9; background-color: #e9ecef; border: 1px solid #ddd;">
                         <img src="/images/us_map.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" />
 
                         @foreach (var cp in _race.Checkpoints)
                         {
-                            <div title="@cp.Name"
-                                 style="position: absolute;
-                                                left: @(cp.MapPositionX)%;
-                                                top: @(cp.MapPositionY)%;
-                                                width: 10px; height: 10px;
-                                                background-color: blue;
-                                                border-radius: 50%;
-                                                transform: translate(-50%, -50%);
-                                                z-index: 1;">
-                            </div>
+                            <MudTooltip Text="@($"{cp.Name} ({cp.DistanceFromStart} mi)")">
+                                <div style="position: absolute;
+                                                    left: @(cp.MapPositionX)%;
+                                                    top: @(cp.MapPositionY)%;
+                                                    width: 12px; height: 12px;
+                                                    background-color: #1976d2;
+                                                    border: 2px solid white;
+                                                    border-radius: 50%;
+                                                    transform: translate(-50%, -50%);
+                                                    z-index: 5;
+                                                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                </div>
+                            </MudTooltip>
                         }
 
-                        <div title="New Checkpoint Preview"
-                             style="position: absolute;
+                        <div style="position: absolute;
                                         left: @(_newCheckpoint.MapPositionX)%;
                                         top: @(_newCheckpoint.MapPositionY)%;
                                         width: 16px; height: 16px;
-                                        background-color: #00ff00;
+                                        background-color: #00e676;
                                         border: 2px solid white;
                                         border-radius: 50%;
                                         transform: translate(-50%, -50%);
                                         z-index: 10;
-                                        box-shadow: 0 0 10px #00ff00;">
+                                        box-shadow: 0 0 8px #00e676;">
                         </div>
 
-                        <div style="position: absolute; bottom: 5px; right: 5px; background: rgba(255,255,255,0.8); padding: 2px 5px; font-size: 0.8rem;">
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
                             X: @_newCheckpoint.MapPositionX% | Y: @_newCheckpoint.MapPositionY%
                         </div>
-                    </div>
+                    </MudPaper>
 
-                    @* Div for Adding checkpoint and adjusting X and Y position before saving *@
-                    <div class="card bg-light p-3 mb-3">
-                        <h6>Add New Checkpoint</h6>
-                        <div class="row g-2 mb-2">
-                            <div class="col-md-8">
-                                <label class="small text-muted">Name</label>
-                                <input type="text" class="form-control form-control-sm" placeholder="City Name"
-                                       @bind-value="_newCheckpoint.Name" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="small text-muted">Miles</label>
-                                <input type="number" class="form-control form-control-sm" placeholder="0"
-                                       @bind-value="_newCheckpoint.DistanceFromStart" />
-                            </div>
-                        </div>
-
-                        <div class="row g-2 mb-2">
-                            <div class="col-12">
-                                <label class="small text-muted">Description (Map Popup Info)</label>
-                                <input type="text" class="form-control form-control-sm"
-                                       placeholder="e.g. 'Water station near the park entrance'"
-                                       @bind-value="_newCheckpoint.Description" />
-                            </div>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col-md-3">
-                                <label class="small text-muted">Map X %</label>
-                                <input type="number" class="form-control form-control-sm"
-                                       @bind-value="_newCheckpoint.MapPositionX"
-                                       @bind-value:event="oninput"
-                                       min="0" max="100" />
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small text-muted">Map Y %</label>
-                                <input type="number" class="form-control form-control-sm"
-                                       @bind-value="_newCheckpoint.MapPositionY"
-                                       @bind-value:event="oninput"
-                                       min="0" max="100" />
-                            </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <button class="btn btn-sm btn-success w-100" @onclick="HandleAddCheckpoint">Save Checkpoint</button>
-                            </div>
-                        </div>
-                    </div>
+                    <MudCard Outlined="true" Class="mb-4">
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Class="mb-2">Add New Checkpoint</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" sm="8">
+                                    <MudTextField @bind-Value="_newCheckpoint.Name" Label="Checkpoint Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="12" sm="4">
+                                    <MudNumericField @bind-Value="_newCheckpoint.DistanceFromStart" Label="Miles" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_newCheckpoint.Description" Label="Description (Popup Info)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudNumericField @bind-Value="_newCheckpoint.MapPositionX" Label="Map X %" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="100" />
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudNumericField @bind-Value="_newCheckpoint.MapPositionY" Label="Map Y %" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="100" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6" Class="d-flex align-end">
+                                    <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true" OnClick="HandleAddCheckpoint">Save Checkpoint</MudButton>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
 
                     @if (_race.Checkpoints.Any())
                     {
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Location</th>
-                                        <th>Distance</th>
-                                        <th>Coords (X,Y)</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var cp in _race.Checkpoints.OrderBy(c => c.DistanceFromStart))
-                                    {
-                                        <tr>
-                                            <td>@cp.Name</td>
-                                            <td>@cp.DistanceFromStart mi</td>
-                                            <td class="small text-muted">(@cp.MapPositionX%, @cp.MapPositionY%)</td>
-                                            <td class="text-end">
-                                                <button class="btn btn-sm btn-outline-danger py-0"
-                                                        @onclick="() => HandleDeleteCheckpoint(cp.Id)">
-                                                    ×
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                        <MudTable Items="_race.Checkpoints.OrderBy(c => c.DistanceFromStart)" Hover="true" Dense="true" Striped="true" Elevation="0">
+                            <HeaderContent>
+                                <MudTh>Location</MudTh>
+                                <MudTh>Distance</MudTh>
+                                <MudTh>Coords</MudTh>
+                                <MudTh>Action</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Name</MudTd>
+                                <MudTd>@context.DistanceFromStart mi</MudTd>
+                                <MudTd>(@context.MapPositionX%, @context.MapPositionY%)</MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => HandleDeleteCheckpoint(context.Id))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
                     }
                     else
                     {
-                        <p class="text-muted fst-italic">No checkpoints set. Add the Start Line (0 miles)!</p>
+                        <MudAlert Severity="Severity.Warning">No checkpoints set. Add the Start Line (0 miles)!</MudAlert>
                     }
-                </div>
-            </div>
+                </MudPaper>
+            </MudItem>
 
-            @* 
-            Div for displaying students participating 
-            using foreach loop on _race.RaceParticipants 
-            *@
-            <div class="col-md-4">
-                <div class="card p-3">
-                    <h5>Students</h5>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4" Elevation="3">
+                    <MudText Typo="Typo.h5" Class="mb-3">Student Roster</MudText>
+
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="8">
+                            <MudSelect T="int" @bind-Value="_selectedStudentId" Label="Select Student" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+                                <MudSelectItem Value="0">Choose...</MudSelectItem>
+                                @foreach (var student in _allStudents)
+                                {
+                                    <MudSelectItem Value="@student.Id">@student.FullName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="HandleAddStudentToRace" Class="mt-1">Add</MudButton>
+                        </MudItem>
+                    </MudGrid>
 
                     @if (_race.RaceParticipants.Any())
                     {
-                        <ul class="list-group list-group-flush">
+                        <MudList T="string" Dense="true">
                             @foreach (var p in _race.RaceParticipants)
                             {
-                                <li class="list-group-item d-flex justify-content-between">
-                                    <span>@p.Student?.FullName</span>
-                                    <span class="badge bg-secondary">@p.LapsCompleted Laps</span>
-                                </li>
+                                <MudListItem>
+                                    <div class="d-flex justify-content-between">
+                                        <MudText>@p.Student?.FullName</MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary">@p.LapsCompleted Laps</MudChip>
+                                    </div>
+                                </MudListItem>
+                                <MudDivider />
                             }
-                        </ul>
+                        </MudList>
                     }
                     else
                     {
-                        <p class="text-muted">No students yet.</p>
+                        <MudText Class="text-muted">No students enrolled yet.</MudText>
                     }
-
-                    <div class="mt-3">
-                        <label class="form-label small text-muted">Add Student to Race:</label>
-                        <div class="input-group">
-                            <select class="form-select" @bind="_selectedStudentId">
-                                <option value="0">Select a student...</option>
-                                @foreach (var student in _allStudents)
-                                {
-                                    <option value="@student.Id">@student.FullName</option>
-                                }
-                            </select>
-
-                            <button class="btn btn-success" @onclick="HandleAddStudentToRace">
-                                Add
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
 }
 
 
@@ -210,7 +176,7 @@ else
     // Initialize this with default 50,50 so the dot appears in the middle at first
     private Checkpoint _newCheckpoint = new() { MapPositionX = 50, MapPositionY = 50 };
 
-    // Task 6
+    // Task 6 or 5
     // Add Student List on Load
     // Select student dropdown
     // Handle Adding Student to Race
@@ -220,13 +186,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _race = await RaceService.GetRaceByIdAsync(RaceId);
-
-        // If race cannot be found, navigate back to home
-        if(_race == null)
-        {
-            NavManager.NavigateTo("/");
-        }
+        await LoadRaceData();
 
         _allStudents = await RaceService.GetAllStudentsAsync();
     }
@@ -239,13 +199,18 @@ else
 
     private async Task HandleAddCheckpoint()
     {
-        if (string.IsNullOrWhiteSpace(_newCheckpoint.Name)) return;
+        if (string.IsNullOrWhiteSpace(_newCheckpoint.Name))
+        {
+            Snackbar.Add("Checkpoint Name is required", Severity.Warning);
+            return;
+        }
 
         // Link the checkpoint to THIS race
         _newCheckpoint.RaceId = RaceId;
 
         // Save
         await RaceService.AddCheckpointAsync(_newCheckpoint);
+        Snackbar.Add("Checkpoint Saved", Severity.Success);
 
         // Reset the form (Reset X/Y to center for the next one)
         _newCheckpoint = new Checkpoint { MapPositionX = 50, MapPositionY = 50 };
@@ -257,6 +222,7 @@ else
     private async Task HandleDeleteCheckpoint(int id)
     {
         await RaceService.DeleteCheckpointAsync(id);
+        Snackbar.Add("Checkpoint Deleted", Severity.Error);
         await LoadRaceData();
     }
 
@@ -267,6 +233,7 @@ else
         if (_selectedStudentId == 0) return;
         // Run the service to add the student to Student Table
         await RaceService.AddStudentToRaceAsync(RaceId, _selectedStudentId);
+        Snackbar.Add("Student Added to Race", Severity.Success);
 
         _selectedStudentId = 0;
 

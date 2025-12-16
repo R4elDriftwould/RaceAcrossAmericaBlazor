@@ -17,5 +17,6 @@
         public int MapPositionX { get; set; }
         public int MapPositionY { get; set; }
         public int RaceId { get; set; }
+        public Race? Race { get; set; }
     }
 }

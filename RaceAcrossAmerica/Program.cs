@@ -5,6 +5,7 @@ using RaceAcrossAmerica.Components;
 using RaceAcrossAmerica.Components.Account;
 using RaceAcrossAmerica.Data;
 using RaceAcrossAmerica.Services;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,9 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 // RaceManagerService registration
 builder.Services.AddScoped<RaceAcrossAmerica.Services.RaceManagerService>();
+
+builder.Services.AddMudServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -63,5 +67,21 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+// --- NEW: Run the Seeder ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        await DatabaseSeeder.SeedAsync(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+    }
+}
+// ---------------------------
 
 app.Run();
