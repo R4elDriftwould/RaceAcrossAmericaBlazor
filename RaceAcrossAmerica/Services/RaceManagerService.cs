@@ -228,5 +228,38 @@ namespace RaceAcrossAmerica.Services
                 await _dbContext.SaveChangesAsync();
             }
         }
+
+        // --- Task 6: Team Management ---
+
+        public async Task<List<ApplicationUser>> GetTeamMembersAsync()
+        {
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<ApplicationUser>();
+
+            // Get all users who belong to this school
+            return await _userManager.Users
+                .Where(u => u.SchoolId == schoolId)
+                .ToListAsync();
+        }
+
+        public async Task<IdentityResult> AddTeamMemberAsync(string email, string password)
+        {
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+            {
+                throw new UnauthorizedAccessException("You must belong to a school to add team members.");
+            }
+
+            var newUser = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                SchoolId = schoolId, // Crucial: Assign them to YOUR school
+                EmailConfirmed = true // Auto-confirm for simplicity
+            };
+
+            var result = await _userManager.CreateAsync(newUser, password);
+            return result;
+        }
     }
 }

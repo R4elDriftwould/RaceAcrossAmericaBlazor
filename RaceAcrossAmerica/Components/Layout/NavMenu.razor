@@ -1,62 +1,12 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Race Across America</a>
-    </div>
-</div>
+﻿<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="students" Icon="@Icons.Material.Filled.People">Students</MudNavLink>
+            <MudNavLink Href="team" Icon="@Icons.Material.Filled.SupervisorAccount">Team Management</MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="" Match="NavLinkMatch.All">
-                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Race Manager
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="students">
-                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Students
-                    </NavLink>
-                </div>
-
-                <div class="nav-divider my-2 border-top border-secondary"></div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="" />
-                        <button type="submit" class="nav-link" style="color: white; text-decoration: none; border: none; background: none; width: 100%; text-align: left; color: white;">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form>
-                </div>
-            </Authorized>
-
-            <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
-                    </NavLink>
-                </div>
-                @*
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" style="color: white; text-decoration: none;" href="Account/Register">
-                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> Register Admin
-                    </NavLink>
-                </div>
-                *@
-            </NotAuthorized>
-        </AuthorizeView>
-
-    </nav>
-</div>
+    <MudNavLink Href="https://learn.microsoft.com/aspnet/core/" Target="_blank" Icon="@Icons.Material.Filled.Info">About</MudNavLink>
+</MudNavMenu>

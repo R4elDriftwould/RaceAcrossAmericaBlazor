@@ -1,0 +1,112 @@
+﻿@page "/team"
+@* @rendermode InteractiveServer *@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using RaceAcrossAmerica.Data
+@using RaceAcrossAmerica.Services
+@attribute [Authorize]
+@inject RaceManagerService RaceService
+@inject NavigationManager NavManager
+
+<PageTitle>Team Management</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h3><i class="bi bi-people-fill me-2"></i>School Staff</h3>
+            <p class="text-muted">These users have access to your school's data.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="alert alert-danger">@ErrorMessage</div>
+    }
+
+    <div class="card mb-4 p-4 shadow-sm">
+        <h5>Add New Staff Member</h5>
+        <div class="row g-3">
+            <div class="col-md-5">
+                <input @bind="NewUserEmail" class="form-control" placeholder="Email Address" />
+            </div>
+            <div class="col-md-5">
+                <input @bind="NewUserPassword" type="password" class="form-control" placeholder="Temporary Password" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" @onclick="AddMember">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Email</th>
+                    <th>School ID</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in TeamMembers)
+                {
+                    <tr>
+                        <td>@user.Email</td>
+                        <td>@user.SchoolId</td>
+                        <td>
+                            <span class="badge bg-success">Active</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<ApplicationUser> TeamMembers = new();
+    private string NewUserEmail = "";
+    private string NewUserPassword = "";
+    private string ErrorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTeam();
+    }
+
+    private async Task LoadTeam()
+    {
+        TeamMembers = await RaceService.GetTeamMembersAsync();
+    }
+
+    private async Task AddMember()
+    {
+        ErrorMessage = "";
+
+        if (string.IsNullOrWhiteSpace(NewUserEmail) || string.IsNullOrWhiteSpace(NewUserPassword))
+        {
+            ErrorMessage = "Email and Password are required.";
+            return;
+        }
+
+        try
+        {
+            var result = await RaceService.AddTeamMemberAsync(NewUserEmail, NewUserPassword);
+
+            if (result.Succeeded)
+            {
+                NewUserEmail = "";
+                NewUserPassword = "";
+                await LoadTeam(); // Refresh the list
+            }
+            else
+            {
+                ErrorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+}

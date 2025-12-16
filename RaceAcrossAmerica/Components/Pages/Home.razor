@@ -1,73 +1,76 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
-@rendermode InteractiveServer
 @using RaceAcrossAmerica.Data
 @using RaceAcrossAmerica.Services
+@attribute [Authorize]
 @inject RaceManagerService RaceService
+@inject NavigationManager NavManager
 
-<h3>Race Manager</h3>
+<PageTitle>Race Manager</PageTitle>
 
-<div class="card p-3 mb-4 bg-light">
-    <h5>Create New Race</h5>
-    <div class="row g-3">
-        <div class="col-md-6">
-            <label>Race Title</label>
-            <input class="form-control" @bind-value="_newRace.Title" placeholder="e.g. 2025 Race" />
-        </div>
-        <div class="col-md-4">
-            <label>Total Miles</label>
-            <input type="number" class="form-control" @bind-value="_newRace.TotalDistanceMiles" />
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary w-100" @onclick="HandleCreateRace">Create</button>
-        </div>
-    </div>
-</div>
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h3" GutterBottom="true">Race Manager</MudText>
+        </MudItem>
 
-@if(_races == null)
-{
-    <p>Loading Races...</p>
-}
-else if(_races.Count == 0)
-{
-    <p>No races found. Create a new one above!</p>
-}
-else
-{
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Distance</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var race in _races)
+        <MudItem xs="12" md="12">
+            <MudPaper Class="pa-4 my-4" Elevation="3">
+                <MudText Typo="Typo.h5" GutterBottom="true">Create New Race</MudText>
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_newRace.Title" Label="Race Title" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" md="4">
+                        <MudNumericField @bind-Value="_newRace.TotalDistanceMiles" Label="Total Miles" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" md="2" Class="d-flex align-center">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="HandleCreateRace">Create</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            @if (_races == null)
             {
-                <tr>
-                    <td>@race.Title</td>
-                    <td>@race.TotalDistanceMiles miles</td>
-                    <td>
-                        @if (race.IsActive)
-                        {
-                            <span class="badge bg-success">Active</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Finished</span>
-                        }
-                    </td>
-                    <td>
-                        <a href="/race/@race.Id" class="btn btn-sm btn-outline-primary">Manage</a>
-                    </td>
-                </tr>
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
             }
-        </tbody>
-    </table>
-}
+            else if (_races.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">No races found. Create a new one above!</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="_races" Hover="true" Striped="true" Elevation="3">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Distance</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Action</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name">@context.Title</MudTd>
+                        <MudTd DataLabel="Distance">@context.TotalDistanceMiles miles</MudTd>
+                        <MudTd DataLabel="Status">
+                            @if (context.IsActive)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Dark" Size="Size.Small">Finished</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Action">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Href="@($"/race/{context.Id}")">Manage</MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code{
     // Create variable for Race List

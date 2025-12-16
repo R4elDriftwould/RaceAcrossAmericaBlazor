@@ -5,6 +5,7 @@ using RaceAcrossAmerica.Components;
 using RaceAcrossAmerica.Components.Account;
 using RaceAcrossAmerica.Data;
 using RaceAcrossAmerica.Services;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,9 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 // RaceManagerService registration
 builder.Services.AddScoped<RaceAcrossAmerica.Services.RaceManagerService>();
+
+builder.Services.AddMudServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
