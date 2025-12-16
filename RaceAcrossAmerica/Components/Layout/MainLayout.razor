@@ -16,6 +16,7 @@
                 <form action="Account/Logout" method="post">
                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Secondary">Logout</MudButton>
                     <AntiforgeryToken />
+                    <input type="hidden" name="returnUrl" value="" />
                 </form>
             </Authorized>
             <NotAuthorized>
