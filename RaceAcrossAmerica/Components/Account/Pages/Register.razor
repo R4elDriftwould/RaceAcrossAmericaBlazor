@@ -17,6 +17,8 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
+@inject ApplicationDbContext DbContext
+
 <PageTitle>Register</PageTitle>
 
 <h1>Register</h1>
@@ -29,6 +31,12 @@
             <h2>Create a new account.</h2>
             <hr />
             <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.SchoolName" id="Input.SchoolName" class="form-control" placeholder="School Name" />
+                <label for="Input.SchoolName">School Name (Optional - Creates New School)</label>
+            </div>
+
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                 <label for="Input.Email">Email</label>
@@ -75,6 +83,26 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
+
+        // --- NEW: School Assignment Logic ---
+        if (!string.IsNullOrWhiteSpace(Input.SchoolName))
+        {
+            // Scenario A: User is creating a NEW School (New Tenant)
+            var newSchool = new School { Name = Input.SchoolName };
+            DbContext.Schools.Add(newSchool);
+            await DbContext.SaveChangesAsync(); // Save to get the new Id
+            user.SchoolId = newSchool.Id;
+        }
+        else
+        {
+            // Scenario B: User joins the Default School
+            var defaultSchool = DbContext.Schools.OrderBy(s => s.Id).FirstOrDefault();
+            if (defaultSchool != null)
+            {
+                user.SchoolId = defaultSchool.Id;
+            }
+        }
+        // ------------------------------------
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -135,6 +163,9 @@
 
     private sealed class InputModel
     {
+        [Display(Name = "School Name (Leave blank to join default)")]
+        public string? SchoolName { get; set; }
+
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]

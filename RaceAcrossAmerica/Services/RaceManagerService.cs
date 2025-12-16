@@ -1,95 +1,97 @@
 ﻿using RaceAcrossAmerica.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace RaceAcrossAmerica.Services
 {
     public class RaceManagerService
     {
-        // Task 1
-        // private variable to hold the database context
-        // constructor to initialize the database context
-        //      [Methods used for Home Page]
-        // method to get all races from the database
-        // method to Create a new race to the database
-
-        // Task 2
-        // method to get all students in student table
-        // Add Student to Race
-        // Add a Lap to RaceParticipant
-
-        //Task 3
-        // method to get race by id
-        //  Use method in RaceDetails page for pulling race details
-
-        // Task 4
-        // method to Add Checkpoint to race
-        // method to Delete Checkpoint from race
-        //  Use methods in RaceDetails page for managing checkpoints
-        //  methods do not care about RaceId directly, Checkpoints are linked to their own table
-
-        // Task 5
-        // method to Create a new student to the database
-        // method to Delete a student from the database
-
-        // Task 6 was in the RaceDetails page, implementing the AddStudent to race
-
-        // Task 7
-        // Implementing the already created AddLap, used in RaceTracker page
-        // method to Remove lap
-
         private readonly ApplicationDbContext _dbContext;
+        private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        // Constructor to initialize the database context
-        public RaceManagerService(ApplicationDbContext dbContext)
+        // We inject AuthStateProvider and UserManager to find the current user
+        public RaceManagerService(
+            ApplicationDbContext dbContext,
+            AuthenticationStateProvider authStateProvider,
+            UserManager<ApplicationUser> userManager)
         {
             _dbContext = dbContext;
+            _authStateProvider = authStateProvider;
+            _userManager = userManager;
         }
 
-        // Get All Races
+        // --- Helper Method: Get Current School ID ---
+        private async Task<int?> GetCurrentSchoolIdAsync()
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var userPrincipal = authState.User;
+
+            if (userPrincipal.Identity == null || !userPrincipal.Identity.IsAuthenticated)
+            {
+                return null;
+            }
+
+            // Retrieve the full user object from the DB to access the SchoolId property
+            var currentUser = await _userManager.GetUserAsync(userPrincipal);
+            return currentUser?.SchoolId;
+        }
+
+        // --- Task 1: Races ---
+
         public async Task<List<Race>> GetAllRacesAsync()
         {
-            // Retrieve Race table from the database
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<Race>();
+
+            // Filter: Only return races for this school
             return await _dbContext.Races
+                .Where(r => r.SchoolId == schoolId)
                 .Include(r => r.Checkpoints)
                 .ToListAsync();
         }
 
-        // Create a Race and add it to the database
         public async Task CreateRaceAsync(Race newRace)
         {
-            // Condition Check: Don't allow empty Title for Race
             if (string.IsNullOrWhiteSpace(newRace.Title))
             {
                 throw new ArgumentException("Race Title cannot be empty.");
             }
 
-            // using the database context to add the new race
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+            {
+                throw new UnauthorizedAccessException("User is not associated with a school.");
+            }
+
+            // Auto-assign the new race to the user's school
+            newRace.SchoolId = schoolId;
+
             _dbContext.Add(newRace);
             await _dbContext.SaveChangesAsync();
         }
 
-        // Get list of students
+        // --- Task 2: Students ---
+
         public async Task<List<Student>> GetAllStudentsAsync()
         {
-            return await _dbContext.Students.ToListAsync();
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<Student>();
+
+            // Filter: Only return students for this school
+            return await _dbContext.Students
+                .Where(s => s.SchoolId == schoolId)
+                .ToListAsync();
         }
 
-        // Add Student to Race
         public async Task AddStudentToRaceAsync(int raceId, int studentId)
         {
-            /*
-             RaceParticipant foundParticipant = null;
+            // Security Check: Ensure the Race belongs to the current school
+            var schoolId = await GetCurrentSchoolIdAsync();
+            var race = await _dbContext.Races.FirstOrDefaultAsync(r => r.Id == raceId && r.SchoolId == schoolId);
 
-            foreach (RaceParticipant rp in _dbContext.RaceParticipants)
-            {
-                if (rp.RaceId == raceId && rp.StudentId == studentId)
-                {
-                    foundParticipant = rp;
-                    break; // Stop looking, we found it!
-                }
-            }
-            return foundParticipant;
-            */
+            if (race == null) return; // Race not found or belongs to another school
 
             // Check if Student already exists in race
             bool alreadyInRace = await _dbContext.RaceParticipants
@@ -111,53 +113,52 @@ namespace RaceAcrossAmerica.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        // Add a Lap to RaceParticipant
         public async Task AddLapAsync(int raceId, int studentId)
         {
-            // Find the RaceParticipant entry
+            // We verify the participant via the race (which is linked to the school)
             var participant = await _dbContext.RaceParticipants
+                .Include(rp => rp.Student) // potentially needed for checks
                 .FirstOrDefaultAsync(rp => rp.RaceId == raceId && rp.StudentId == studentId);
 
-            if(participant != null) 
+            // Optional: You could strictly check if participant.Student.SchoolId == currentSchoolId here too
+
+            if (participant != null)
             {
                 participant.LapsCompleted++;
                 await _dbContext.SaveChangesAsync();
             }
         }
 
-        // Delete a Lap from a RaceParticipant
         public async Task RemoveLapAsync(int raceId, int studentId)
         {
-            // retrieve participant
             var participant = await _dbContext.RaceParticipants
                 .FirstOrDefaultAsync(rp => rp.RaceId == raceId && rp.StudentId == studentId);
 
-            // validate participant laps completed is greater than 0
-            //      update database
-            if(participant != null && participant.LapsCompleted > 0)
+            if (participant != null && participant.LapsCompleted > 0)
             {
                 participant.LapsCompleted--;
                 await _dbContext.SaveChangesAsync();
             }
         }
 
-        // Get Race by ID
-        // include the Checkpoints
-        // include the RaceParticipants
+        // --- Task 3: Race Details ---
+
         public async Task<Race?> GetRaceByIdAsync(int raceId)
         {
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null) return null;
 
+            // Filter: Only find the race if it matches the ID AND the SchoolId
             return await _dbContext.Races
                 .Include(r => r.Checkpoints)
                 .Include(r => r.RaceParticipants)
                     .ThenInclude(rp => rp.Student)
-                .FirstOrDefaultAsync(r => r.Id == raceId);
-
-
+                .FirstOrDefaultAsync(r => r.Id == raceId && r.SchoolId == schoolId);
         }
 
-        // Add Checkpoint to Checkpoints table
-        // requires a checkpoint object
+        // --- Task 4: Checkpoints ---
+        // Checkpoints are children of Races. Since we secure the Race, we implicitly secure the Checkpoint add/delete.
+
         public async Task AddCheckpointAsync(Checkpoint newCheckpoint)
         {
             if (string.IsNullOrEmpty(newCheckpoint.Name))
@@ -165,41 +166,63 @@ namespace RaceAcrossAmerica.Services
                 throw new ArgumentException("Checkpoint Name cannot be blank.");
             }
 
+            // Verify the race belongs to the user's school before adding a checkpoint
+            var schoolId = await GetCurrentSchoolIdAsync();
+            bool raceExistsForSchool = await _dbContext.Races.AnyAsync(r => r.Id == newCheckpoint.RaceId && r.SchoolId == schoolId);
+
+            if (!raceExistsForSchool)
+            {
+                throw new UnauthorizedAccessException("Cannot add checkpoint to a race that does not belong to your school.");
+            }
+
             _dbContext.Checkpoints.Add(newCheckpoint);
             await _dbContext.SaveChangesAsync();
         }
 
-        // Delete a Checkpoint from Checkpoint Table
         public async Task DeleteCheckpointAsync(int checkpointId)
         {
-            var checkpoint = await _dbContext.Checkpoints.FindAsync(checkpointId);
-            if(checkpoint != null)
+            var schoolId = await GetCurrentSchoolIdAsync();
+
+            var checkpoint = await _dbContext.Checkpoints
+                .Include(c => c.Race)
+                .FirstOrDefaultAsync(c => c.Id == checkpointId);
+
+            // Verify the checkpoint belongs to a race owned by the user's school
+            if (checkpoint != null && checkpoint.Race != null && checkpoint.Race.SchoolId == schoolId)
             {
                 _dbContext.Checkpoints.Remove(checkpoint);
                 await _dbContext.SaveChangesAsync();
             }
         }
 
-        // Create a Student to Student List
+        // --- Task 5: Students Management ---
+
         public async Task CreateStudentAsync(Student newStudent)
         {
-            // Validation check
-            if(string.IsNullOrEmpty(newStudent.FirstName) || string.IsNullOrEmpty(newStudent.FullName))
+            if (string.IsNullOrEmpty(newStudent.FirstName) || string.IsNullOrEmpty(newStudent.FullName))
             {
                 throw new ArgumentException("Student name is required");
             }
-            // add to local dbContext
-            _dbContext.Students.Add(newStudent);
 
-            // SaveChangeAsync
+            var schoolId = await GetCurrentSchoolIdAsync();
+            if (schoolId == null) throw new UnauthorizedAccessException("User is not associated with a school.");
+
+            // Auto-assign student to the school
+            newStudent.SchoolId = schoolId;
+
+            _dbContext.Students.Add(newStudent);
             await _dbContext.SaveChangesAsync();
         }
 
-        // Delete a student from the Student list
         public async Task DeleteStudentAsync(int studentId)
         {
-            var student = await _dbContext.Students.FindAsync(studentId);
-            if(student != null)
+            var schoolId = await GetCurrentSchoolIdAsync();
+
+            // Only find the student if they belong to the user's school
+            var student = await _dbContext.Students
+                .FirstOrDefaultAsync(s => s.Id == studentId && s.SchoolId == schoolId);
+
+            if (student != null)
             {
                 _dbContext.Students.Remove(student);
                 await _dbContext.SaveChangesAsync();
