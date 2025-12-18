@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -35,6 +35,31 @@
         </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+<style>
+    /* SMART BOARD FIX: 
+       This forces the browser to treat touches as "taps" instead of waiting 
+       to see if you are trying to scroll. 
+    */
+    .mud-button-root, 
+    .mud-icon-button, 
+    .mud-chip, 
+    .mud-list-item,
+    button, 
+    a {
+        touch-action: manipulation !important;
+    }
+
+    /* OPTIONAL: NUCLEAR RIPPLE REMOVAL
+       If buttons still get stuck "blue" without clicking, 
+       uncommenting the lines below will delete the animation entirely.
+    */
+    /*
+    .mud-ripple {
+        display: none !important;
+    }
+    */
+</style>
 
 @code {
     bool _drawerOpen = true;
