@@ -1,4 +1,4 @@
-﻿@page "/tracker/{RaceId:int}"
+@page "/tracker/{RaceId:int}"
 @using Microsoft.AspNetCore.Authorization
 @using RaceAcrossAmerica.Data
 @using RaceAcrossAmerica.Services
@@ -61,7 +61,7 @@ else
 
                         @foreach (var cp in _sortedCheckpoints)
                         {
-                            <div @onclick="() => SelectCheckpoint(cp)" @onclick:stopPropagation="true"
+                            <div @onpointerdown="() => SelectCheckpoint(cp)" @onpointerdown:stopPropagation="true"
                                  class="map-pin-container checkpoint-hitbox"
                                  style="left: @(cp.MapPositionX)%; top: @(cp.MapPositionY)%; z-index: 20;">
                                 <div class="pin-checkpoint"></div>
@@ -83,14 +83,11 @@ else
                             var pos = CalculateStudentPosition(p.LapsCompleted);
                             bool isSelected = _selectedStudentId == p.StudentId;
 
-                            // --- NEW: HIDE OTHERS LOGIC ---
-                            // If a student is selected, and this specific 'p' is NOT the selected one, skip it.
                             if (_selectedStudentId.HasValue && !isSelected) continue;
-                            // ------------------------------
 
                             string zIndex = isSelected ? "30" : "15";
 
-                            <div @onclick="() => SelectStudent(p.StudentId)" @onclick:stopPropagation="true"
+                            <div @onpointerdown="() => SelectStudent(p.StudentId)" @onpointerdown:stopPropagation="true"
                                  class="map-pin-container @(isSelected ? "selected-container" : "")"
                                  style="left: @(pos.X)%; top: @(pos.Y)%; z-index: @zIndex;">
                                 <div class="@(isSelected ? "pin-student-selected" : "pin-student")"></div>
@@ -105,7 +102,7 @@ else
 
                             <div class="d-flex justify-content-between align-center mb-1">
                                 <MudText Typo="Typo.body2" Style="font-weight:bold; font-size: 0.9em;">@_selectedCheckpoint.Name</MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ClearCheckpointSelection" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ClearCheckpointSelection" DisableRipple="true" />
                             </div>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@_selectedCheckpoint.DistanceFromStart miles</MudText>
 
@@ -122,7 +119,7 @@ else
                                 <div style="max-height: 60px; overflow-y: auto;">
                                     @foreach (var s in _studentsAtCheckpoint)
                                     {
-                                        <MudText Typo="Typo.caption" Class="d-block">@s.Student?.FullName (@(s.LapsCompleted* MilesPerLap) mi)</MudText>
+                                        <MudText Typo="Typo.caption" Class="d-block">@s.Student?.FullName (@(s.LapsCompleted * MilesPerLap) mi)</MudText>
                                     }
                                 </div>
                             }
@@ -155,7 +152,7 @@ else
 
                     @if (_selectedStudentId.HasValue)
                     {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" FullWidth="true" Class="mb-2" OnClick="ClearStudentSelection">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" FullWidth="true" Class="mb-2" OnClick="ClearStudentSelection" DisableRipple="true">
                             Clear Selection
                         </MudButton>
                     }
@@ -167,7 +164,8 @@ else
                                 bool isSelected = _selectedStudentId == p.StudentId;
 
                                 <MudListItem OnClick="() => SelectStudent(p.StudentId)"
-                                             Class="@(isSelected ? "mud-theme-warning" : "")">
+                                             Class="@(isSelected ? "mud-theme-warning" : "")"
+                                             DisableRipple="true">
                                     <div class="d-flex justify-content-between align-center">
                                         <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px;">
                                             <MudText Typo="Typo.body2"><b>@p.Student?.FullName</b></MudText>
@@ -179,8 +177,8 @@ else
                                     @if (isSelected)
                                     {
                                         <div class="d-flex gap-2 mt-2 justify-end">
-                                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@((e) => HandleRemoveLap(p.StudentId))">-</MudButton>
-                                            <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@((e) => HandleAddLap(p.StudentId))">+ Lap</MudButton>
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@((e) => HandleRemoveLap(p.StudentId))" DisableRipple="true">-</MudButton>
+                                            <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@((e) => HandleAddLap(p.StudentId))" DisableRipple="true">+ Lap</MudButton>
                                         </div>
                                     }
                                 </MudListItem>
@@ -209,8 +207,8 @@ else
                     <MudTd DataLabel="Laps"><b>@context.LapsCompleted</b></MudTd>
                     <MudTd DataLabel="Distance">@((context.LapsCompleted * MilesPerLap)) mi</MudTd>
                     <MudTd DataLabel="Action">
-                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle" Color="Color.Error" Size="Size.Small" OnClick="@(() => HandleRemoveLap(context.StudentId))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Color="Color.Success" Size="Size.Medium" OnClick="@(() => HandleAddLap(context.StudentId))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle" Color="Color.Error" Size="Size.Small" OnClick="@(() => HandleRemoveLap(context.StudentId))" DisableRipple="true" />
+                        <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Color="Color.Success" Size="Size.Medium" OnClick="@(() => HandleAddLap(context.StudentId))" DisableRipple="true" />
                     </MudTd>
                 </RowTemplate>
             </MudTable>
@@ -219,6 +217,12 @@ else
     </MudContainer>
 
     <style>
+        /* FIX: GLOBAL TOUCH FIX for Smart Board 
+           Forces browser to prioritize clicks over scroll/zoom */
+        .mud-button-root, .mud-icon-button, .map-pin-container, .mud-list-item {
+            touch-action: manipulation !important;
+        }
+
         .map-wrapper {
             position: relative;
             width: 100%;
@@ -359,7 +363,6 @@ else
         if (_race == null) { NavManager.NavigateTo("/"); return; }
 
         _sortedCheckpoints = _race.Checkpoints.OrderBy(c => c.DistanceFromStart).ToList();
-
         _availableGroups = _race.RaceParticipants
             .Select(p => p.Student?.Group ?? "Unassigned")
             .Distinct().OrderBy(g => g).ToList();
@@ -498,6 +501,7 @@ else
     private (double X, double Y) CalculateStudentPosition(int laps)
     {
         double currentMiles = laps * MilesPerLap;
+
         if (!_sortedCheckpoints.Any()) return (50, 50);
 
         if (currentMiles <= _sortedCheckpoints.First().DistanceFromStart)
