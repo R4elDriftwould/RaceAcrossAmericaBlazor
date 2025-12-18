@@ -38,8 +38,8 @@
 
 <style>
     /* SMART BOARD FIX: 
-       This forces the browser to treat touches as "taps" instead of waiting 
-       to see if you are trying to scroll. 
+       Forces the browser to treat touches as "taps" instead of waiting 
+       to see if user is trying to scroll. 
     */
     .mud-button-root, 
     .mud-icon-button, 
@@ -50,15 +50,12 @@
         touch-action: manipulation !important;
     }
 
-    /* OPTIONAL: NUCLEAR RIPPLE REMOVAL
-       If buttons still get stuck "blue" without clicking, 
-       uncommenting the lines below will delete the animation entirely.
-    */
-    /*
+    
+    
     .mud-ripple {
         display: none !important;
     }
-    */
+    
 </style>
 
 @code {
